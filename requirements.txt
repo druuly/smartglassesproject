@@ -1,7 +1,8 @@
 streamlit
 deepface==0.0.93
 tensorflow==2.13.0
-opencv-python-headless==4.5.5.62
+opencv-python==4.7.0.72
+opencv-python-headless==4.7.0.72
 numpy
 pillow
 speechrecognition
