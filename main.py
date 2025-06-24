@@ -1,93 +1,61 @@
-import cv2
+import streamlit as st
 from deepface import DeepFace
 import speech_recognition as sr
-from nltk.sentiment import SentimentIntensityAnalyzer
-import threading
-import time
+import numpy as np
+import cv2
 import nltk
+from nltk.sentiment import SentimentIntensityAnalyzer
+import tempfile
+import os
 
-# Download VADER lexicon once
+# Download VADER lexicon if not already
 nltk.download("vader_lexicon")
 
-# Initialize webcam and face detection
-cap = cv2.VideoCapture(0)
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-
-# Initialize recognizer and sentiment analyzer
-recognizer = sr.Recognizer()
-mic = sr.Microphone()
+# Initialize sentiment analyzer
 sia = SentimentIntensityAnalyzer()
 
-# Globals to store current speech text and emotion
-speech_text = ""
-speech_emotion = ""
+st.title("🧠 Emotion Detection (Facial & Speech)")
 
-# Function to process speech and analyze emotion
-def listen_for_speech():
-    global speech_text, speech_emotion
-    while True:
-        try:
-            with mic as source:
-                recognizer.adjust_for_ambient_noise(source)
-                print("🎤 Listening for speech...")
-                audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
-                text = recognizer.recognize_google(audio)
-                print(f"👂 Heard: {text}")
-                score = sia.polarity_scores(text)
-                comp = score["compound"]
-                if comp > 0.3:
-                    emotion = "happy"
-                elif comp < -0.3:
-                    emotion = "angry/sad"
-                else:
-                    emotion = "neutral"
-                speech_text = text
-                speech_emotion = emotion
-        except Exception as e:
-            print(f"Speech error: {e}")
-            speech_text = ""
-            speech_emotion = ""
-        time.sleep(1)  # Slight delay between recordings
+# --- Facial Emotion Section ---
+st.header("📸 Facial Emotion Analysis")
+img_file = st.file_uploader("Upload a face image", type=["jpg", "jpeg", "png"])
+if img_file:
+    img_bytes = np.asarray(bytearray(img_file.read()), dtype=np.uint8)
+    img = cv2.imdecode(img_bytes, 1)
+    st.image(img, channels="BGR", caption="Uploaded Image")
 
-# Start the speech recognition thread
-speech_thread = threading.Thread(target=listen_for_speech, daemon=True)
-speech_thread.start()
+    try:
+        result = DeepFace.analyze(img, actions=["emotion"], enforce_detection=False)
+        st.write("Facial Emotion:", result[0]["dominant_emotion"])
+    except Exception as e:
+        st.error(f"Facial emotion analysis failed: {e}")
 
-print("🎥 Starting webcam. Press 'q' to quit.")
+# --- Speech Emotion Section ---
+st.header("🎤 Speech Emotion Analysis")
+audio_file = st.file_uploader("Upload a short audio clip (WAV only)", type=["wav"])
+if audio_file:
+    recognizer = sr.Recognizer()
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
+        tmp_file.write(audio_file.read())
+        audio_path = tmp_file.name
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        print("Failed to capture frame")
-        break
+    try:
+        with sr.AudioFile(audio_path) as source:
+            audio = recognizer.record(source)
+            text = recognizer.recognize_google(audio)
+            score = sia.polarity_scores(text)
+            comp = score["compound"]
 
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5)
+            if comp > 0.3:
+                emotion = "happy"
+            elif comp < -0.3:
+                emotion = "angry/sad"
+            else:
+                emotion = "neutral"
 
-    # For each face, detect and display emotion
-    for (x, y, w, h) in faces:
-        face_img = frame[y:y+h, x:x+w]
-        try:
-            result = DeepFace.analyze(face_img, actions=["emotion"], enforce_detection=False)
-            dominant_emotion = result[0]["dominant_emotion"]
-            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-            cv2.putText(frame, f"Face: {dominant_emotion}", (x, y-10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 255), 2)
-        except Exception as e:
-            print(f"Facial emotion error: {e}")
+            st.write("Transcribed Text:", f"'{text}'")
+            st.write("Speech Emotion:", emotion)
+    except Exception as e:
+        st.error(f"Speech recognition failed: {e}")
 
-    # Display the latest transcribed speech and its emotion
-    height = frame.shape[0]
-    if speech_text:
-        cv2.putText(frame, f"Speech: {speech_emotion}", (10, height - 35),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-        cv2.putText(frame, f"'{speech_text}'", (10, height - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
-
-    cv2.imshow("SmartGlasses Emotion Tracker", frame)
-
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
-
-cap.release()
-cv2.destroyAllWindows()
+    os.remove(audio_path)
