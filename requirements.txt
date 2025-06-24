@@ -1,7 +1,7 @@
 streamlit
-deepface
-opencv-python-headless
+deepface==0.0.93
+opencv-python-headless==4.5.5.62
 numpy
 pillow
-speechrecognition
+speechrecognition==3.8.1
 nltk
