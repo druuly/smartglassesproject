@@ -1,10 +1,7 @@
-Flask==3.1.1
-gunicorn==23.0.0
-tensorflow==2.13.0
-deepface==0.0.93
-opencv-python==4.11.0.86
-SpeechRecognition==3.14.3
-nltk==3.9.1
-pandas==2.3.0
-requests==2.32.4
-Werkzeug==3.1.2
+streamlit
+deepface
+opencv-python-headless
+numpy
+pillow
+speechrecognition
+nltk
