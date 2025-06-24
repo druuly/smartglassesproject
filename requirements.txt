@@ -1,8 +1,7 @@
 streamlit
-deepface==0.0.93               # face-analysis library
-tensorflow==2.13.0             # backend required by DeepFace
-opencv-python-headless==4.7.0.72  # <— headless build (no libGL)
-# --- runtime helpers ---
+deepface==0.0.93
+tensorflow==2.13.0
+opencv-python-headless==4.7.0.72
 numpy
 pillow
 speechrecognition
