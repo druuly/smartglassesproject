@@ -1,4 +1,13 @@
 import streamlit as st
+
+import subprocess
+import sys
+import importlib.util
+
+# Uninstall GUI OpenCV (if installed accidentally by a sub-dependency like DeepFace)
+if importlib.util.find_spec("cv2"):
+    subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "opencv-python"])
+
 from deepface import DeepFace
 import speech_recognition as sr
 import numpy as np
